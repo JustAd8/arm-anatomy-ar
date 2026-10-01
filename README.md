@@ -2,7 +2,7 @@
 
 An interactive augmented reality web application that tracks your arms in real-time through your device webcam and generates a high-fidelity 3D anatomical overlay showing **veins, muscles, and bones** structure with dynamic muscle contraction and vascular fluid pulsing.
 
-![BioScan AR](https://raw.githubusercontent.com/JustAd8/arm-anatomy-ar/main/public/preview.png)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJustAd8%2Farm-anatomy-ar)
 
 ## 🩻 Key Features
 
