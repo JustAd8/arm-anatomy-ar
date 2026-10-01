@@ -1,0 +1,965 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-deep: #060911;
+  --bg-surface: rgba(13, 20, 36, 0.75);
+  --bg-surface-hover: rgba(22, 33, 58, 0.85);
+  --bg-card: rgba(15, 23, 42, 0.82);
+  --border-subtle: rgba(56, 189, 248, 0.18);
+  --border-glow: rgba(0, 240, 255, 0.45);
+  
+  --cyan-primary: #00f0ff;
+  --cyan-glow: rgba(0, 240, 255, 0.25);
+  --scarlet-artery: #ff2a5f;
+  --blue-vein: #0088ff;
+  --amber-nerve: #ffd200;
+  --bone-ivory: #f1ebe1;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  
+  --shadow-hud: 0 8px 32px 0 rgba(0, 0, 0, 0.45), 0 0 20px 0 var(--cyan-glow);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* -------------------------------------------------------------------------
+   VIEWPORT & CANVASES
+   ------------------------------------------------------------------------- */
+.viewport-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #0d1527 0%, #050811 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#camera-video {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  z-index: 1;
+  filter: contrast(1.05) brightness(0.95);
+  transition: opacity 0.3s ease;
+}
+
+#three-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+/* Sci-Fi Vignette and Scanning Grid Lines */
+.viewport-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: 
+    radial-gradient(ellipse at center, transparent 40%, rgba(6, 9, 17, 0.75) 100%),
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+}
+
+/* Hologram Scanning Line */
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--cyan-primary), transparent);
+  box-shadow: 0 0 16px var(--cyan-primary);
+  opacity: 0.6;
+  z-index: 4;
+  pointer-events: none;
+  animation: scanSweep 6s ease-in-out infinite;
+}
+
+@keyframes scanSweep {
+  0% { transform: translateY(-10px); opacity: 0; }
+  15% { opacity: 0.75; }
+  85% { opacity: 0.75; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+/* Corner Reticles */
+.hud-corner {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--cyan-primary);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.6;
+}
+.hud-corner.top-left { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+.hud-corner.top-right { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+.hud-corner.bottom-left { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+.hud-corner.bottom-right { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+
+/* -------------------------------------------------------------------------
+   TOP HUD BAR
+   ------------------------------------------------------------------------- */
+.hud-top-bar {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.brand-badge {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 102, 255, 0.3));
+  border: 1px solid var(--border-glow);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.brand-badge .logo-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--cyan-primary);
+  animation: pulseLogo 3s ease-in-out infinite;
+}
+
+@keyframes pulseLogo {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 6px var(--cyan-primary)); }
+}
+
+.brand-title {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 1.5px;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.brand-subtitle {
+  font-size: 11px;
+  color: var(--cyan-primary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+/* Telemetry Pills */
+.telemetry-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.telem-pill {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.telem-pill .indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--cyan-primary);
+  box-shadow: 0 0 8px var(--cyan-primary);
+}
+
+.telem-pill.active .indicator-dot {
+  background-color: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.telem-pill.demo .indicator-dot {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+/* Animated ECG Pulse graph in top bar */
+.ecg-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--scarlet-artery);
+  border-color: rgba(255, 42, 95, 0.3);
+}
+
+.ecg-svg {
+  width: 44px;
+  height: 16px;
+  stroke: var(--scarlet-artery);
+  stroke-width: 1.8;
+  fill: none;
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: ecgWave 1.4s linear infinite;
+}
+
+@keyframes ecgWave {
+  0% { stroke-dashoffset: 60; }
+  100% { stroke-dashoffset: -60; }
+}
+
+/* Quick Action Buttons */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.action-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(12px);
+}
+
+.action-btn:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-glow);
+  box-shadow: 0 0 12px var(--cyan-glow);
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(1px);
+}
+
+.action-btn.active {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: var(--cyan-primary);
+  color: var(--cyan-primary);
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.3), rgba(0, 102, 255, 0.4));
+  border-color: var(--cyan-primary);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+}
+
+/* -------------------------------------------------------------------------
+   FLOATING AR BIOMETRICS HUD (Bottom Left)
+   ------------------------------------------------------------------------- */
+.hud-biometrics {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.bio-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  backdrop-filter: blur(16px);
+  width: 220px;
+  box-shadow: var(--shadow-hud);
+  pointer-events: auto;
+}
+
+.bio-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bio-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.bio-value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--cyan-primary);
+  text-shadow: 0 0 12px var(--cyan-glow);
+}
+
+.bio-unit {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.bio-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.bio-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan-primary), #3b82f6);
+  border-radius: var(--radius-full);
+  transition: width 0.15s ease-out;
+}
+
+/* Dynamic Bicep Bulge Meter */
+.bio-progress-fill.muscle {
+  background: linear-gradient(90deg, #f43f5e, #ef4444);
+}
+
+/* -------------------------------------------------------------------------
+   INTERACTIVE ANATOMICAL TOOLTIP / CALLOUT CARD (3D RAYCAST)
+   ------------------------------------------------------------------------- */
+.anatomy-inspector-card {
+  position: absolute;
+  bottom: 24px;
+  left: 260px;
+  z-index: 15;
+  width: 330px;
+  background: rgba(8, 14, 28, 0.88);
+  border: 1px solid var(--cyan-primary);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.25);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: auto;
+}
+
+.anatomy-inspector-card.hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.card-system-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.card-system-tag.Skeletal { background: rgba(241, 235, 225, 0.2); color: #f1ebe1; }
+.card-system-tag.Muscular { background: rgba(239, 68, 68, 0.25); color: #f87171; }
+.card-system-tag.Vascular { background: rgba(0, 145, 255, 0.25); color: #38bdf8; }
+.card-system-tag.Nervous { background: rgba(234, 179, 8, 0.25); color: #facc15; }
+
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.card-latin {
+  font-size: 11px;
+  color: var(--cyan-primary);
+  font-style: italic;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.card-clinical {
+  font-size: 11px;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border-left: 2px solid #f59e0b;
+  padding: 6px 8px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  line-height: 1.35;
+}
+
+/* -------------------------------------------------------------------------
+   COLLAPSIBLE SIDE DOCK (Right Side Controls)
+   ------------------------------------------------------------------------- */
+.hud-side-dock {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  bottom: 24px;
+  width: 320px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-hud);
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.hud-side-dock.collapsed {
+  transform: translateX(calc(100% + 30px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dock-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(8, 14, 28, 0.5);
+}
+
+.dock-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dock-title svg {
+  width: 15px;
+  height: 15px;
+  color: var(--cyan-primary);
+}
+
+.dock-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.dock-close-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Dock Navigation Tabs */
+.dock-tabs {
+  display: flex;
+  background: rgba(6, 10, 20, 0.6);
+  padding: 4px;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  background: rgba(0, 240, 255, 0.15);
+  color: var(--cyan-primary);
+  box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1);
+}
+
+/* Tab Content Panels */
+.dock-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dock-content::-webkit-scrollbar {
+  width: 5px;
+}
+.dock-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.dock-panel {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dock-panel.active {
+  display: flex;
+}
+
+/* Section Subheadings */
+.panel-section-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--cyan-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+/* Layer Control Item */
+.layer-row {
+  background: rgba(10, 16, 32, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+
+.layer-row:hover {
+  border-color: var(--border-subtle);
+}
+
+.layer-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.layer-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.layer-icon {
+  font-size: 15px;
+}
+
+.layer-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.layer-slider-row span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 30px;
+  text-align: right;
+}
+
+/* Custom Range Slider */
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cyan-primary);
+  box-shadow: 0 0 8px var(--cyan-primary);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-switch {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  transition: 0.3s;
+}
+
+.slider-switch:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+input:checked + .slider-switch {
+  background-color: var(--cyan-primary);
+  box-shadow: 0 0 10px var(--cyan-glow);
+}
+
+input:checked + .slider-switch:before {
+  transform: translateX(16px);
+  background-color: #030712;
+}
+
+/* Shader / Mode Grid */
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mode-card {
+  background: rgba(10, 16, 32, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.mode-card:hover {
+  border-color: var(--border-subtle);
+  background: rgba(20, 30, 56, 0.8);
+}
+
+.mode-card.active {
+  background: rgba(0, 240, 255, 0.15);
+  border-color: var(--cyan-primary);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+}
+
+.mode-card-icon {
+  font-size: 20px;
+}
+
+.mode-card-title {
+  font-weight: 700;
+  font-size: 11px;
+  color: #fff;
+}
+
+.mode-card-desc {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* Anatomy Catalog List */
+.atlas-search {
+  width: 100%;
+  background: rgba(6, 10, 20, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 12px;
+  outline: none;
+  margin-bottom: 6px;
+}
+
+.atlas-search:focus {
+  border-color: var(--cyan-primary);
+  box-shadow: 0 0 10px var(--cyan-glow);
+}
+
+.atlas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.atlas-item {
+  background: rgba(10, 16, 32, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+}
+
+.atlas-item:hover {
+  background: rgba(20, 32, 60, 0.8);
+  border-color: var(--cyan-primary);
+}
+
+.atlas-item-name {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.atlas-item-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Floating Dock Toggle Button (When dock is closed) */
+.dock-toggle-btn {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  z-index: 18;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--cyan-primary);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-hud);
+  backdrop-filter: blur(12px);
+  transition: all 0.2s;
+}
+
+.dock-toggle-btn:hover {
+  border-color: var(--cyan-primary);
+  box-shadow: 0 0 15px var(--cyan-glow);
+  transform: scale(1.05);
+}
+
+.dock-toggle-btn.hidden {
+  display: none;
+}
+
+/* -------------------------------------------------------------------------
+   HELP / MODAL OVERLAY
+   ------------------------------------------------------------------------- */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 7, 15, 0.85);
+  backdrop-filter: blur(16px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 520px;
+  width: 90%;
+  box-shadow: var(--shadow-hud);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+}
+
+.modal-header h3 {
+  font-size: 18px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.modal-content ul {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hud-side-dock {
+    width: 290px;
+  }
+  .hud-biometrics {
+    display: none;
+  }
+  .anatomy-inspector-card {
+    left: 20px;
+    right: 20px;
+    width: auto;
+  }
+}
